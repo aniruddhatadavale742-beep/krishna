@@ -13,7 +13,13 @@ from brain.power_manager import PowerManager
 
 from conversation.casual_chat import CasualChat
 
-from voice.piper_tts import PiperTTS
+# Support both the package layout and the root-level Piper file in this repository.
+try:
+    from voice.piper_tts import PiperTTS
+except ModuleNotFoundError as error:
+    if error.name not in {"voice", "voice.piper_tts"}:
+        raise
+    from piper_tts import PiperTTS
 
 from utils.windows_control import WindowsControl
 
@@ -207,6 +213,65 @@ class KrishnaAssistant:
             return text[8:].strip()
 
         return text
+
+    # =========================================================
+    # SYSTEM STATUS REPORT
+    # =========================================================
+
+    def build_status_report(self):
+        """
+        Return a lightweight diagnostic report without generating
+        an AI response or loading a model.
+        """
+        lines = [
+            "KRISHNA SYSTEM STATUS",
+            f"Assistant: {self.name}",
+            f"Version: {self.version}",
+        ]
+
+        try:
+            mode = self.ai_router.get_current_mode()
+            lines.append(f"AI mode: {str(mode).upper()}")
+        except Exception:
+            lines.append("AI mode: Unable to read configuration")
+
+        try:
+            sleeping = self.power_manager.is_sleeping()
+            lines.append(
+                f"Assistant state: {'SLEEPING' if sleeping else 'AWAKE'}"
+            )
+        except Exception:
+            lines.append("Assistant state: Unable to determine")
+
+        # A single /api/tags request checks Ollama and model availability
+        # without loading a model into memory.
+        try:
+            status = self.ai_router.local_ai.get_status()
+            if status["ollama_available"]:
+                lines.append("Ollama: AVAILABLE")
+                model_name = status.get("model", "configured local model")
+                model_state = (
+                    "INSTALLED"
+                    if status["model_available"]
+                    else "NOT INSTALLED"
+                )
+                lines.append(f"Local model ({model_name}): {model_state}")
+            else:
+                lines.append(
+                    f"Ollama: UNAVAILABLE ({status.get('detail', 'no response')})"
+                )
+                lines.append("Local model: Not checked")
+        except Exception:
+            lines.append("Ollama/model status: Unable to check")
+
+        try:
+            profiles = self.windows_control.get_chrome_profiles()
+            lines.append(f"Chrome profiles detected: {len(profiles)}")
+        except Exception:
+            lines.append("Chrome profiles: Unable to check")
+
+        lines.append("Diagnostic check did not load an AI model.")
+        return "\n".join(lines)
 
     # =========================================================
     # CHROME PROFILE COMMAND DETECTION
@@ -640,6 +705,26 @@ class KrishnaAssistant:
             )
 
         text = user_input.lower().strip()
+
+        # Status is informational, so it also works during application sleep.
+        command_text = (
+            self.remove_wake_word(user_input)
+            .lower()
+            .strip()
+            .rstrip(" .,!?:;")
+        )
+        status_commands = {
+            "status",
+            "system status",
+            "krishna status",
+            "system check",
+            "check system",
+            "run diagnostics",
+            "diagnostics",
+            "health check",
+        }
+        if command_text in status_commands:
+            return self._respond(self.build_status_report())
 
         # =====================================================
         # SLEEP COMMAND
