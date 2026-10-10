@@ -98,17 +98,21 @@ class AIRouter:
                     "to local AI..."
                 )
 
-                # -------------------------------------------------
-                # Save offline mode
-                # -------------------------------------------------
-
-                self.mode_manager.set_mode(
-                    "offline"
-                )
-
-                response = self.local_ai.generate_response(
-                    user_input
-                )
+                # Fallback applies to this request only. Preserve the
+                # user's saved mode so online mode retries Gemini on
+                # the next request when the service may have recovered.
+                try:
+                    response = self.local_ai.generate_response(
+                        user_input
+                    )
+                except Exception as local_error:
+                    print(
+                        f"KRISHNA: Local AI also failed: {local_error}"
+                    )
+                    return (
+                        "KRISHNA: Both cloud and local AI are unavailable. "
+                        "Please check your internet connection and Ollama."
+                    )
 
                 return self.format_response(
                     user_input,
