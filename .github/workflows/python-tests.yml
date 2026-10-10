@@ -1,0 +1,31 @@
+name: KRISHNA Python checks
+
+on:
+  push:
+    branches:
+      - main
+      - feature/system-status
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependency
+        run: python -m pip install requests
+
+      - name: Compile changed Python modules
+        run: python -m py_compile core/assistant.py brain/local_ai.py
+
+      - name: Run local AI status tests
+        run: python -m unittest tests.test_local_ai_status -v
