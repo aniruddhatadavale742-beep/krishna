@@ -128,10 +128,10 @@ class LocalAI:
 
         except requests.exceptions.Timeout:
             detail = "request timed out"
-        except requests.exceptions.RequestException:
-            detail = "could not connect"
         except (ValueError, TypeError, AttributeError):
             detail = "invalid response"
+        except requests.exceptions.RequestException:
+            detail = "could not connect"
 
         return {
             "ollama_available": False,
