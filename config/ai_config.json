@@ -1,0 +1,7 @@
+{
+    "mode": "offline",
+    "cloud_ai": "gemini",
+    "local_ai": "ollama",
+    "local_model": "qwen2.5:1.5b",
+    "vision_model": "qwen3-vl:2b"
+}
