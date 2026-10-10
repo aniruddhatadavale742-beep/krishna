@@ -121,7 +121,11 @@ class KrishnaAssistant:
         online and offline AI modes.
         """
 
+        # Normalize punctuation and an optional leading wake word so
+        # common speech-recognition variants still match reliably.
+        text = self.remove_wake_word(text)
         text = text.lower().strip()
+        text = text.rstrip(" .,!?:;")
 
         # -----------------------------------------------------
         # ONLINE COMMANDS
