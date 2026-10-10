@@ -95,7 +95,52 @@ class LocalAI:
             return False
 
 
-    # =========================================================
+    # =====================================================
+    # LIGHTWEIGHT STATUS CHECK
+    # =====================================================
+
+    def get_status(self):
+        """
+        Check Ollama and the configured model with one /api/tags
+        request. This does not load the model into memory.
+        """
+        try:
+            response = requests.get(
+                self.tags_url,
+                timeout=min(self.connection_timeout, 2)
+            )
+            response.raise_for_status()
+            data = response.json()
+            models = data.get("models", [])
+
+            installed_names = {
+                item.get("name")
+                for item in models
+                if isinstance(item, dict) and item.get("name")
+            }
+
+            return {
+                "ollama_available": True,
+                "model": self.model,
+                "model_available": self.model in installed_names,
+                "detail": "responding",
+            }
+
+        except requests.exceptions.Timeout:
+            detail = "request timed out"
+        except requests.exceptions.RequestException:
+            detail = "could not connect"
+        except (ValueError, TypeError, AttributeError):
+            detail = "invalid response"
+
+        return {
+            "ollama_available": False,
+            "model": self.model,
+            "model_available": False,
+            "detail": detail,
+        }
+
+    # =====================================================
     # GENERATE RESPONSE
     # =========================================================
 
